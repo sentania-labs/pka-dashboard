@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Drafts{% endblock %}
+
+{% block content %}
+  <hgroup>
+    <h1>Drafts</h1>
+    <p>{{ items | length }} pending draft{{ '' if items | length == 1 else 's' }}.</p>
+  </hgroup>
+
+  {% if items %}
+    <table>
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Date</th>
+          <th>Age</th>
+          <th>Words</th>
+          <th>Status</th>
+          <th>Fact checks</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for it in items %}
+          <tr>
+            <td>{{ it.title }}</td>
+            <td>{{ it.date.isoformat() if it.date else '—' }}</td>
+            <td>{{ '%.0f' | format(it.age_hours) }}h</td>
+            <td>{{ it.word_count }}</td>
+            <td>{{ it.status or '—' }}</td>
+            <td>{{ it.fact_checks | join(', ') if it.fact_checks else '—' }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No drafts in <code>scott/inbox/content-drafts/</code>.</p>
+  {% endif %}
+{% endblock %}

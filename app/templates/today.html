@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Today{% endblock %}
+
+{% block content %}
+  <hgroup>
+    <h1>{{ today_date.strftime('%A, %B %-d, %Y') }}</h1>
+    <p>Daily briefing</p>
+  </hgroup>
+
+  <article class="briefing"
+           hx-get="/partials/today-body"
+           hx-trigger="load"
+           hx-swap="outerHTML">
+    <p><em>Loading…</em></p>
+  </article>
+{% endblock %}

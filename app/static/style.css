@@ -1,0 +1,328 @@
+/* Renarin — overrides on top of Pico CSS.
+ * Dark/light themes picked up from prefers-color-scheme (see base.html).
+ * Bucket accent colors are defined as custom properties so they adapt per theme.
+ */
+
+:root {
+  --bucket-stale: #c62828;
+  --bucket-aging: #ef6c00;
+  --bucket-fresh: #2e7d32;
+  --bucket-drafts: #f9a825;
+  --meta-bg: #f4f4f4;
+}
+
+[data-theme="dark"] {
+  --bucket-stale: #ef5350;
+  --bucket-aging: #ffa726;
+  --bucket-fresh: #66bb6a;
+  --bucket-drafts: #fdd835;
+  --meta-bg: #1a1a1a;
+}
+
+/* Nav */
+header nav ul.nav-links {
+  gap: 0.25rem;
+}
+header nav a.active {
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+/* Briefing readability */
+.briefing {
+  max-width: 800px;
+  line-height: 1.6;
+}
+
+/* Age buckets */
+.age-bucket {
+  border-left: 4px solid var(--pico-muted-border-color);
+  padding-left: 1rem;
+  margin-bottom: 2rem;
+}
+.age-bucket-stale { border-left-color: var(--bucket-stale); }
+.age-bucket-aging { border-left-color: var(--bucket-aging); }
+.age-bucket-fresh { border-left-color: var(--bucket-fresh); }
+
+.aging-drafts {
+  border-left: 4px solid var(--bucket-drafts);
+  padding-left: 1rem;
+  margin-bottom: 2rem;
+}
+
+.note-list {
+  list-style: none;
+  padding: 0;
+}
+.note-list li {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--pico-muted-border-color);
+}
+.review-notes {
+  margin-top: 0.25rem;
+  padding-left: 1rem;
+}
+.review-notes ul {
+  margin: 0;
+  padding-left: 1rem;
+}
+
+/* Tables */
+table {
+  width: 100%;
+}
+tbody tr:nth-child(even) {
+  background: var(--pico-table-row-stripped-background-color, rgba(127,127,127,0.05));
+}
+
+/* Metadata panel */
+details.meta-panel {
+  background: var(--meta-bg);
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+}
+details.meta-panel summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+details.meta-panel dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.25rem 1rem;
+  margin: 0.5rem 0 0 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+}
+details.meta-panel dt {
+  font-weight: 600;
+}
+details.meta-panel dd {
+  margin: 0;
+  word-break: break-word;
+}
+
+/* Archive two-pane layout */
+.archive-layout {
+  display: grid;
+  grid-template-columns: minmax(16rem, 1fr) 3fr;
+  gap: 2rem;
+}
+.archive-index ul {
+  list-style: none;
+  padding: 0;
+  max-height: 75vh;
+  overflow-y: auto;
+}
+.archive-index li {
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--pico-muted-border-color);
+}
+.archive-index li.active {
+  font-weight: 600;
+}
+@media (max-width: 768px) {
+  .archive-layout { grid-template-columns: 1fr; }
+}
+
+/* Toasts */
+#toast-container {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 1000;
+  pointer-events: none;
+}
+.toast {
+  padding: 0.75rem 1.25rem;
+  border-radius: 6px;
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  color: white;
+  transition: opacity 0.25s ease;
+  animation: fadein 0.2s ease;
+  pointer-events: auto;
+}
+.toast-error { background: var(--bucket-stale); }
+.toast-success { background: var(--bucket-fresh); }
+@keyframes fadein {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Todo items in briefings */
+.briefing li.todo-item {
+  list-style: none;
+  margin-left: -1.25rem;
+  padding: 0.1rem 0;
+  position: relative;
+}
+.todo-pill {
+  display: inline-block;
+  border: 1px solid var(--pico-muted-border-color);
+  border-radius: 4px;
+  padding: 0 0.4em;
+  margin-right: 0.4em;
+  cursor: pointer;
+  background: var(--pico-secondary-background, rgba(127,127,127,0.1));
+  font-size: 0.85em;
+  font-weight: 600;
+}
+.todo-pill:hover {
+  background: var(--pico-secondary-hover-background, rgba(127,127,127,0.2));
+}
+.todo-checkbox {
+  margin-right: 0.4em;
+  vertical-align: middle;
+  cursor: pointer;
+}
+.todo-text {
+  vertical-align: middle;
+}
+.todo-edit-btn {
+  opacity: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 0.85em;
+  margin-left: 0.4em;
+  padding: 0 0.25em;
+  color: var(--pico-muted-color);
+  width: auto;
+  display: inline;
+}
+.todo-item:hover .todo-edit-btn { opacity: 1; }
+.todo-edit-input {
+  font-size: 0.9em;
+  padding: 0.1em 0.3em;
+  margin-bottom: 0;
+}
+
+/* Writing Prompt card (hoisted to top of Today view) */
+.writing-prompt-card {
+  border: 1px solid var(--pico-muted-border-color);
+  border-left: 4px solid var(--bucket-drafts);
+  border-radius: 4px;
+  padding: 0.75rem 1rem;
+  margin: 0 0 1.5rem 0;
+  background: var(--pico-secondary-background, rgba(127,127,127,0.04));
+}
+.writing-prompt-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin-bottom: 0.25rem;
+}
+.writing-prompt-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+.writing-prompt-tag {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.1em 0.5em;
+  border-radius: 3px;
+  background: var(--pico-secondary-background, rgba(127,127,127,0.15));
+  color: var(--pico-muted-color);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.writing-prompt-body {
+  margin: 0.5rem 0;
+}
+.writing-prompt-body p:last-child {
+  margin-bottom: 0;
+}
+.writing-prompt-response {
+  margin-top: 0.5rem;
+}
+
+/* Scott's comment blocks */
+.comment-block {
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s ease;
+  padding: 0.1rem 0.25rem;
+  margin: 0.5rem 0;
+}
+.comment-block:hover {
+  background: var(--pico-secondary-background, rgba(127,127,127,0.08));
+}
+.comment-block.comment-placeholder blockquote {
+  color: var(--pico-muted-color);
+  font-style: italic;
+}
+.comment-edit textarea {
+  width: 100%;
+  min-height: 6rem;
+  font-family: inherit;
+  margin-bottom: 0.5rem;
+}
+.comment-edit .actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.comment-edit .actions button {
+  width: auto;
+  margin: 0;
+}
+
+/* Needs Attention — escape link for marking reviewed without responses */
+.mark-without-responses {
+  margin-top: 0.75rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--pico-muted-border-color);
+}
+.mark-reviewed-link {
+  font-size: 0.8rem;
+  color: var(--pico-muted-color);
+  text-decoration: none;
+}
+.mark-reviewed-link:hover {
+  color: var(--pico-color);
+  text-decoration: underline;
+}
+
+/* Review response pairing */
+.review-item {
+  margin: 0.4rem 0 0.75rem 0;
+}
+.review-question small {
+  color: var(--pico-muted-color);
+}
+.review-response-area {
+  position: relative;
+  margin-top: 0.25rem;
+}
+.review-response-textarea {
+  width: 100%;
+  min-height: 3.5rem;
+  font-size: 0.9rem;
+  resize: vertical;
+}
+/* Per-textarea save indicator */
+.save-indicator {
+  position: absolute;
+  top: 0.3rem;
+  right: 0.5rem;
+  font-size: 0.8rem;
+  pointer-events: none;
+}
+.save-indicator.status-saved  { color: var(--bucket-fresh); }
+.save-indicator.status-dirty  { color: var(--pico-muted-color); }
+.save-indicator.status-saving { color: var(--bucket-aging); }
+.save-indicator.status-error  { color: var(--bucket-stale); pointer-events: auto; cursor: help; }
+
+/* All-addressed state */
+li.all-addressed {
+  background: color-mix(in srgb, var(--bucket-fresh) 8%, transparent);
+  border-radius: 4px;
+}
+
+.toast-undo .undo-link {
+  color: white;
+  text-decoration: underline;
+  margin-left: 0.5em;
+  cursor: pointer;
+}

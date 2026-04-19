@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}Needs Attention{% endblock %}
+
+{% block content %}
+  <hgroup>
+    <h1>Needs Attention</h1>
+    <p>{{ total }} unreviewed note{{ '' if total == 1 else 's' }} in <code>kb/</code> and <code>agents/shallan/inbox/</code>.</p>
+  </hgroup>
+
+  {% for bucket_key in ['stale', 'aging', 'fresh'] %}
+    {% set items = grouped[bucket_key] %}
+    <section class="age-bucket age-bucket-{{ bucket_key }}">
+      <h2>{{ bucket_labels[bucket_key] }} <small>({{ items | length }})</small></h2>
+      {% if items %}
+        <ul class="note-list">
+          {% for it in items %}
+            {% set note_id = 'note-' ~ bucket_key ~ '-' ~ loop.index %}
+            {% set outer_index = loop.index %}
+            {%- set all_addressed = it.review_notes|length > 0
+                and it.review_notes|length <= it.review_responses|length
+                and it.review_responses[:it.review_notes|length]|select|list|length == it.review_notes|length -%}
+            <li id="{{ note_id }}"
+                data-file="{{ it.path | relative_to_pka }}"
+                data-mtime="{{ it.mtime }}"
+                {% if all_addressed %}class="all-addressed"{% endif %}>
+              <strong>{{ it.title }}</strong>
+              <br>
+              <small>
+                {% if it.date %}{{ it.date.isoformat() }} · {% endif %}
+                {{ '%.0f' | format(it.age_hours) }}h old ·
+                <code>{{ it.path.name }}</code>
+              </small>
+              {% if it.review_notes %}
+                <div class="review-notes">
+                  <small><strong>Review notes:</strong></small>
+                  {% for note in it.review_notes %}
+                    {%- set idx = loop.index0 -%}
+                    {%- set qnum = loop.index -%}
+                    {%- set response = it.review_responses[idx] if idx < it.review_responses|length else '' -%}
+                    {%- set wrapper_id = 'review-' ~ bucket_key ~ '-' ~ outer_index ~ '-' ~ idx -%}
+                    <div class="review-item" id="{{ wrapper_id }}">
+                      <div class="review-question">
+                        <small>{{ qnum }}. {{ note }}</small>
+                      </div>
+                      <div class="review-response-area">
+                        <input type="hidden" name="file_path" value="{{ it.path | relative_to_pka }}">
+                        <input type="hidden" name="index" value="{{ idx }}">
+                        <input type="hidden" name="mtime" value="{{ it.mtime }}">
+                        <input type="hidden" name="wrapper_id" value="{{ wrapper_id }}">
+                        <input type="hidden" name="note_text" value="{{ note }}">
+                        <input type="hidden" name="question_number" value="{{ qnum }}">
+                        <textarea
+                          name="response_text"
+                          class="review-response-textarea"
+                          placeholder="Your response..."
+                          data-file="{{ it.path | relative_to_pka }}"
+                          data-index="{{ idx }}"
+                          data-mtime="{{ it.mtime }}"
+                          data-save-status="{{ 'saved' if response else '' }}"
+                          hx-patch="/edit/review-response"
+                          hx-trigger="blur, change delay:50ms"
+                          hx-include="closest .review-item"
+                          hx-target="closest .review-item"
+                          hx-swap="outerHTML"
+                          hx-sync="closest li:queue all"
+                        >{{ response }}</textarea>
+                      </div>
+                    </div>
+                  {% endfor %}
+                </div>
+              {% endif %}
+              <div class="mark-without-responses">
+                <input type="hidden" name="file_path" value="{{ it.path | relative_to_pka }}">
+                <input type="hidden" name="mtime" value="{{ it.mtime }}">
+                <a href="#" class="mark-reviewed-link"
+                  hx-post="/edit/reviewed"
+                  hx-include="closest .mark-without-responses"
+                  hx-target="closest li"
+                  hx-swap="outerHTML"
+                  hx-sync="closest li:queue all">
+                  Mark reviewed with no responses
+                </a>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p><small>Nothing here.</small></p>
+      {% endif %}
+    </section>
+  {% endfor %}
+
+  <section class="aging-drafts">
+    <h2>Aging drafts <small>({{ aging_drafts | length }})</small></h2>
+    {% if aging_drafts %}
+      <table>
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>File</th>
+            <th>Age</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for d in aging_drafts %}
+            <tr>
+              <td>{{ d.title }}</td>
+              <td><code>{{ d.path.name }}</code></td>
+              <td>{{ '%.0f' | format(d.age_hours) }}h</td>
+              <td>{{ d.status or '—' }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p><small>No drafts older than 24 hours.</small></p>
+    {% endif %}
+  </section>
+{% endblock %}

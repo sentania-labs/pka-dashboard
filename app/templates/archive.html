@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Archive{% endblock %}
+
+{% block content %}
+  <hgroup>
+    <h1>Archive</h1>
+    <p>{{ items | length }} archived briefing{{ '' if items | length == 1 else 's' }}.</p>
+  </hgroup>
+
+  <div class="archive-layout">
+    <aside class="archive-index">
+      {% if items %}
+        <ul>
+          {% for it in items %}
+            <li {% if item and item.filename == it.filename %}class="active"{% endif %}>
+              <a href="/archive/{{ it.filename }}">
+                {{ it.date.isoformat() if it.date else '????' }}
+              </a>
+              <br>
+              <small><code>{{ it.filename }}</code></small>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p><small>No archived briefings.</small></p>
+      {% endif %}
+    </aside>
+
+    <section class="archive-body">
+      {% if item %}
+        <h2>{{ item.filename }}</h2>
+        {% if item_meta %}
+          <details class="meta-panel">
+            <summary>Metadata</summary>
+            <dl>
+              {% for key, value in item_meta.items() %}
+                <dt>{{ key }}</dt>
+                <dd>{{ value }}</dd>
+              {% endfor %}
+            </dl>
+          </details>
+        {% endif %}
+        <article class="briefing">{{ item.body_html | safe }}</article>
+      {% else %}
+        <p><small>Select a briefing from the list.</small></p>
+      {% endif %}
+    </section>
+  </div>
+{% endblock %}

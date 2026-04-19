@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Renarin{% endblock %} · PKA Dashboard</title>
+    <script>
+      document.documentElement.setAttribute(
+        'data-theme',
+        window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+      );
+    </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}">
+    <script src="{{ url_for('static', path='htmx.min.js') }}" defer></script>
+  </head>
+  <body>
+    <header class="container">
+      <nav>
+        <ul>
+          <li><strong>Renarin</strong></li>
+        </ul>
+        <ul class="nav-links">
+          <li><a href="/" {% if active == 'today' %}class="active"{% endif %}>Today</a></li>
+          <li><a href="/needs-attention" {% if active == 'needs-attention' %}class="active"{% endif %}>Needs Attention</a></li>
+          <li><a href="/drafts" {% if active == 'drafts' %}class="active"{% endif %}>Drafts</a></li>
+          <li><a href="/archive" {% if active == 'archive' %}class="active"{% endif %}>Archive</a></li>
+        </ul>
+      </nav>
+    </header>
+    <main class="container">
+      {% block content %}{% endblock %}
+    </main>
+    <footer class="container">
+      <small>Renarin · PKA view</small>
+    </footer>
+    <div id="toast-container" aria-live="polite"></div>
+    <script src="{{ url_for('static', path='todo.js') }}" defer></script>
+    <script>
+      document.body.addEventListener('todosaved', () => window.flashToast && window.flashToast('Saved'));
+      document.body.addEventListener('commentssaved', () => window.flashToast && window.flashToast('Saved'));
+      document.body.addEventListener('reviewsaved', () => window.flashToast && window.flashToast('Marked reviewed'));
+      document.body.addEventListener('responsesaved', () => window.flashToast && window.flashToast('Saved'));
+      document.body.addEventListener('allreviewed', () => window.flashToast && window.flashToast('✓ All responses complete — note marked reviewed', 'success', 3000));
+    </script>
+    <script>
+    (function () {
+      if (new URLSearchParams(window.location.search).get('debug') !== '1') return;
+      var panel = document.createElement('div');
+      panel.id = 'debug-log';
+      panel.style.cssText = [
+        'position:fixed', 'bottom:0', 'left:0', 'width:420px',
+        'max-height:40vh', 'overflow-y:auto',
+        'background:rgba(0,0,0,0.88)', 'color:#0f0',
+        'font-family:monospace', 'font-size:11px',
+        'padding:8px', 'z-index:9999',
+        'border-top:1px solid #0f0'
+      ].join(';');
+      document.body.appendChild(panel);
+
+      function logEntry(msg) {
+        var line = document.createElement('div');
+        line.textContent = new Date().toISOString().slice(11, 23) + ' ' + msg;
+        panel.appendChild(line);
+        if (panel.children.length > 200) panel.removeChild(panel.firstChild);
+        panel.scrollTop = panel.scrollHeight;
+      }
+
+      document.addEventListener('htmx:beforeRequest', function (e) {
+        var el = e.detail && e.detail.elt;
+        if (!el) return;
+        var url = el.getAttribute('hx-patch') || el.getAttribute('hx-post') || el.getAttribute('hx-put') || '?';
+        var verb = el.getAttribute('hx-patch') ? 'PATCH' : (el.getAttribute('hx-post') ? 'POST' : 'PUT');
+        var mtime = el.dataset && el.dataset.mtime;
+        logEntry(verb + ' ' + url + (mtime ? ' mt=' + parseFloat(mtime).toFixed(3) : ''));
+      });
+
+      document.addEventListener('htmx:afterRequest', function (e) {
+        var xhr = e.detail && e.detail.xhr;
+        var status = xhr && xhr.status;
+        logEntry('  → ' + (status || '?') + (e.detail && e.detail.successful ? ' OK' : ' FAIL'));
+      });
+    })();
+    </script>
+  </body>
+</html>
