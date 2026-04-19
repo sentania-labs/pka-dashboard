@@ -19,8 +19,8 @@ Canonical scope document: `../../agents/riker/status/pka-dashboard.md` (relative
 
 1. **Writes are mediated.** All filesystem writes go through `services/file_writer.py` only. Never write files directly from routes.
 2. **No auth.** LAN trust perimeter. Single user. Do not add authentication layers.
-3. **No CI.** No GitHub Actions, no workflow files, no runner configuration. Images are hand-built on the deploy host.
-4. **No canonical remote by default.** GitHub may be added as a mirror when explicitly authorized by Scott. Treat local as canonical even with a remote configured — the Docker host's local working tree is the source of truth. Never `push` without explicit instruction.
+3. **CI is active.** GitHub Actions runs on push to `master` and on `v*` tags via `.github/workflows/build.yml`. Builds run on a self-hosted runner with labels `[self-hosted, linux, docker]` and push images to GHCR (`ghcr.io/sentania-labs/pka-dashboard`).
+4. **GitHub is the canonical remote.** `sentania-labs/pka-dashboard` on GitHub.com (public) is the source of truth. Push `master` to publish; the deploy host pulls images from GHCR rather than building locally.
 5. **`PKA_ROOT` is always an env var.** Never hardcode `/path/to/pka` or `/data/pka` in the app code. Dev uses `PKA_ROOT=/path/to/pka`; container uses `PKA_ROOT=/data/pka`.
 6. **TLS in production, HTTP in dev.** uvicorn serves HTTPS directly in the container (cert/key bind-mounted at `/certs/tls.key` and `/certs/tls.crt`). For local dev, run uvicorn on HTTP port 8000 — no certs needed.
 7. **python-frontmatter for all YAML.** Never manually parse YAML frontmatter from markdown files. Use the `python-frontmatter` library.
@@ -107,7 +107,8 @@ pka-dashboard/
 - **TLS:** uvicorn `--ssl-keyfile /certs/tls.key --ssl-certfile /certs/tls.crt` — certs bind-mounted from the internal CA pattern used on `docker.example.internal`
 - **Volume mount:** `~/pka/scott/` and `~/pka/kb/` → `/data/pka/scott/` and `/data/pka/kb/` (RW on the mount; app is RO in this phase)
 - **No reverse proxy** in front. Single container, single port, direct TLS.
-- **Image build:** `docker build` by hand on the deploy host. No CI, no registry push required.
+- **Image source:** `ghcr.io/sentania-labs/pka-dashboard:<tag>` — pulled by `worker.int`. Tags: `latest` (master), `<sha>` (per-commit), `<branch>`, and semver (`v*` tags).
+- **Build pipeline:** GitHub Actions builds and pushes on every push to `master`. Source of truth: GitHub.com repo `sentania-labs/pka-dashboard` (public).
 
 ## Not In Scope (MVP)
 
