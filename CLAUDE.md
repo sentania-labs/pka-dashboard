@@ -20,7 +20,7 @@ Canonical scope document: `../../agents/riker/status/pka-dashboard.md` (relative
 1. **Writes are mediated.** All filesystem writes go through `services/file_writer.py` only. Never write files directly from routes.
 2. **No auth.** LAN trust perimeter. Single user. Do not add authentication layers.
 3. **No CI.** No GitHub Actions, no workflow files, no runner configuration. Images are hand-built on the deploy host.
-4. **No remote.** Local git repo only. Do not push or add a remote without explicit instruction.
+4. **No canonical remote by default.** GitHub may be added as a mirror when explicitly authorized by Scott. Treat local as canonical even with a remote configured — the Docker host's local working tree is the source of truth. Never `push` without explicit instruction.
 5. **`PKA_ROOT` is always an env var.** Never hardcode `/path/to/pka` or `/data/pka` in the app code. Dev uses `PKA_ROOT=/path/to/pka`; container uses `PKA_ROOT=/data/pka`.
 6. **TLS in production, HTTP in dev.** uvicorn serves HTTPS directly in the container (cert/key bind-mounted at `/certs/tls.key` and `/certs/tls.crt`). For local dev, run uvicorn on HTTP port 8000 — no certs needed.
 7. **python-frontmatter for all YAML.** Never manually parse YAML frontmatter from markdown files. Use the `python-frontmatter` library.

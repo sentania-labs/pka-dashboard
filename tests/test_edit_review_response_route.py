@@ -5,11 +5,31 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+
+class _CSRFClient(TestClient):
+    """TestClient that primes + echoes the CSRF cookie on mutating calls."""
+
+    def request(self, method, url, **kwargs):
+        method_upper = method.upper()
+        if method_upper in ("POST", "PUT", "PATCH", "DELETE"):
+            token = self.cookies.get("renarin_csrf")
+            if not token:
+                # Prime by hitting an HTML page.
+                super().request("GET", "/needs-attention")
+                token = self.cookies.get("renarin_csrf")
+            if token:
+                headers = dict(kwargs.get("headers") or {})
+                headers.setdefault("X-CSRF-Token", token)
+                kwargs["headers"] = headers
+        return super().request(method, url, **kwargs)
+
+
 @pytest.fixture
 def client(tmp_path, monkeypatch):
     # Point PKA_ROOT at tmp_path, set up kb/work/ so the route allows the file
     kb_work = tmp_path / "kb" / "work"
     kb_work.mkdir(parents=True)
+    (tmp_path / "scott" / "inbox").mkdir(parents=True, exist_ok=True)
     monkeypatch.setenv("PKA_ROOT", str(tmp_path))
     # Re-import settings after env change. Route modules cache `settings`
     # at import time, so reload them too — otherwise subsequent tests see
@@ -23,8 +43,7 @@ def client(tmp_path, monkeypatch):
     importlib.reload(er_mod)
     from app import main as main_mod
     importlib.reload(main_mod)
-    from fastapi.testclient import TestClient
-    return TestClient(main_mod.app)
+    return _CSRFClient(main_mod.app)
 
 @pytest.fixture
 def corrupt_note(tmp_path):

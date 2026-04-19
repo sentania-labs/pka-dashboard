@@ -6,7 +6,7 @@ from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse
 
 from app.config import settings
-from app.services import notes
+from app.services import audit_log, notes
 from app.services.file_writer import (
     MtimeConflictError,
     edit_line,
@@ -47,27 +47,54 @@ def edit_todo(
     hash: str = Form(...),
     new_content: str = Form(...),
 ) -> HTMLResponse:
+    client_ip = request.client.host if request.client else None
+    ua = request.headers.get("user-agent")
+
     path = _resolve_under(settings.scott_inbox, file)
     if path is None:
+        audit_log.record(
+            "edit_todo", file, status="fail", reason="path-not-allowed",
+            remote_addr=client_ip, ua=ua,
+        )
         return _toast_error("File not found or outside inbox.")
 
     try:
         text, mtime = read_with_mtime(path)
         file_lines = text.splitlines()
         if line < 0 or line >= len(file_lines):
+            audit_log.record(
+                "edit_todo", file, status="fail", reason="line-out-of-range",
+                remote_addr=client_ip, ua=ua,
+            )
             return _toast_error("Line out of range — refresh.")
         current_line = file_lines[line]
         if notes.line_hash(current_line) != hash:
+            audit_log.record(
+                "edit_todo", file, status="fail", reason="hash-mismatch",
+                remote_addr=client_ip, ua=ua,
+            )
             return _toast_error("Todo changed on disk — refresh.")
 
         parsed = notes.parse_todo_line(current_line)
         if parsed is None:
+            audit_log.record(
+                "edit_todo", file, status="fail", reason="not-a-todo",
+                remote_addr=client_ip, ua=ua,
+            )
             return _toast_error("Line is not a todo — refresh.")
 
         rebuilt = f"{parsed['prefix']}{new_content}{parsed['suffix']}"
         edit_line(path, line, hash, rebuilt, mtime)
     except MtimeConflictError:
+        audit_log.record(
+            "edit_todo", file, status="fail", reason="mtime-conflict",
+            remote_addr=client_ip, ua=ua,
+        )
         return _toast_error("File changed on disk — refresh.")
+
+    audit_log.record(
+        "edit_todo", file, remote_addr=client_ip, ua=ua,
+    )
 
     new_hash = notes.line_hash(rebuilt)
     filename = path.name

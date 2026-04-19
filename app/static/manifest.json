@@ -1,0 +1,19 @@
+{
+  "name": "Renarin",
+  "short_name": "Renarin",
+  "description": "PKA Dashboard",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#13171f",
+  "theme_color": "#13171f",
+  "icons": [
+    {
+      "src": "/static/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

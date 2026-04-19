@@ -130,9 +130,17 @@
       var item = ta.closest('.review-item');
       if (item && item.id) data.append('wrapper_id', item.id);
 
+      // Use fetch with keepalive so the wrapped fetch in base.html attaches
+      // the CSRF header. sendBeacon can't set custom headers and would be
+      // rejected by CSRF middleware.
       if (document.visibilityState === 'hidden') {
-        navigator.sendBeacon('/edit/review-response', data);
         ta.dataset.saveStatus = 'saving';
+        fetch('/edit/review-response', {
+          method: 'PATCH',
+          body: data,
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          keepalive: true
+        }).catch(function () {});
       } else {
         setStatusFor(ta, 'saving');
         fetch('/edit/review-response', {

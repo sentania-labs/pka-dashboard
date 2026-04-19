@@ -4,11 +4,11 @@ import html as html_lib
 import json
 from pathlib import Path
 
-from fastapi import APIRouter, Form
+from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse
 
 from app.config import settings
-from app.services import notes
+from app.services import audit_log, notes
 from app.services.file_writer import (
     MtimeConflictError,
     edit_comment_block,
@@ -64,6 +64,7 @@ def _serialise_blockquote(new_content: str, marker: str) -> list[str]:
 
 @router.patch("/edit/comments", response_class=HTMLResponse)
 def edit_comments(
+    request: Request,
     file: str = Form(...),
     block_start: int = Form(...),
     block_end: int = Form(...),
@@ -71,8 +72,15 @@ def edit_comments(
     mtime: float = Form(...),
     marker: str = Form(""),
 ) -> HTMLResponse:
+    client_ip = request.client.host if request.client else None
+    ua = request.headers.get("user-agent")
+
     path = _resolve_under(settings.scott_inbox, file)
     if path is None:
+        audit_log.record(
+            "edit_comments", file, status="fail", reason="path-not-allowed",
+            remote_addr=client_ip, ua=ua,
+        )
         return _toast_error("File not found or outside inbox.")
 
     chosen_marker = marker if marker in _ALLOWED_MARKERS else notes.COMMENTS_MARKER
@@ -83,9 +91,21 @@ def edit_comments(
     try:
         edit_comment_block(path, block_start, block_end, new_block_text, mtime)
     except MtimeConflictError:
+        audit_log.record(
+            "edit_comments", file, status="fail", reason="mtime-conflict",
+            remote_addr=client_ip, ua=ua,
+        )
         return _toast_error("File changed on disk — refresh.")
     except ValueError:
+        audit_log.record(
+            "edit_comments", file, status="fail", reason="block-range-invalid",
+            remote_addr=client_ip, ua=ua,
+        )
         return _toast_error("Block range invalid — refresh.")
+
+    audit_log.record(
+        "edit_comments", file, remote_addr=client_ip, ua=ua,
+    )
 
     # Recompute updated block position so the edit widget stays consistent.
     text, new_mtime = read_with_mtime(path)

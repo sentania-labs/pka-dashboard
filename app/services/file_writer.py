@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import hashlib
 import io
+import logging
 import os
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -10,6 +12,9 @@ from typing import Any
 from ruamel.yaml import YAML as RuamelYAML
 from ruamel.yaml import YAMLError
 from ruamel.yaml.constructor import DuplicateKeyError
+
+
+log = logging.getLogger(__name__)
 
 
 @dataclass
@@ -36,6 +41,79 @@ def read_with_mtime(path: Path) -> tuple[str, float]:
     text = path.read_text(encoding="utf-8")
     mtime = path.stat().st_mtime
     return text, mtime
+
+
+def _git_repo_root(path: Path) -> Path | None:
+    try:
+        out = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            cwd=str(path.parent if path.is_file() else path),
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (FileNotFoundError, subprocess.SubprocessError) as exc:
+        log.debug("git rev-parse lookup failed for %s: %s", path, exc)
+        return None
+    if out.returncode != 0:
+        return None
+    root = out.stdout.strip()
+    return Path(root) if root else None
+
+
+def auto_commit(path: Path, op: str) -> None:
+    """Best-effort `git add <path> && git commit` at the enclosing repo.
+
+    Insurance against Renarin-caused corruption: every successful mediated
+    write gets its own commit so we can bisect/revert. Never raises — if
+    git is missing, the repo is absent, pre-commit hooks fail, or the
+    working tree is clean, we log and move on.
+    """
+    try:
+        repo_root = _git_repo_root(path)
+        if repo_root is None:
+            log.debug("auto_commit: no git repo for %s", path)
+            return
+        try:
+            rel = path.resolve().relative_to(repo_root.resolve())
+        except ValueError:
+            log.debug("auto_commit: %s not under repo %s", path, repo_root)
+            return
+        rel_str = rel.as_posix()
+
+        add = subprocess.run(
+            ["git", "add", "--", rel_str],
+            cwd=str(repo_root),
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if add.returncode != 0:
+            log.warning("auto_commit: git add failed (%s): %s", rel_str, add.stderr.strip())
+            return
+
+        msg = f"renarin: {op} {rel_str}"
+        commit = subprocess.run(
+            ["git", "commit", "-m", msg, "--", rel_str],
+            cwd=str(repo_root),
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+        if commit.returncode != 0:
+            # "nothing to commit" is fine — the file may already match HEAD.
+            stderr = (commit.stderr or "").strip()
+            stdout = (commit.stdout or "").strip()
+            if "nothing to commit" in stdout or "nothing to commit" in stderr:
+                return
+            log.warning(
+                "auto_commit: git commit failed (%s): %s %s",
+                rel_str, stderr, stdout,
+            )
+    except (FileNotFoundError, subprocess.SubprocessError) as exc:
+        log.warning("auto_commit: subprocess error for %s: %s", path, exc)
+    except Exception as exc:
+        log.warning("auto_commit: unexpected error for %s: %s", path, exc)
 
 
 def write_atomic(
@@ -101,6 +179,7 @@ def edit_frontmatter_field(
 
     new_content = "---\n" + new_yaml + "---\n" + body_text
     write_atomic(path, new_content, expected_mtime)
+    auto_commit(path, f"frontmatter:{field}")
 
 
 def edit_review_response(
@@ -151,6 +230,7 @@ def edit_review_response(
     _yaml.dump(data, buf)
     new_content = "---\n" + buf.getvalue() + "---\n" + body_text
     write_atomic(path, new_content, expected_mtime)
+    auto_commit(path, "review-response")
 
     new_mtime = path.stat().st_mtime
     return ReviewResponseResult(new_mtime=new_mtime, marked_reviewed=marked_reviewed)
@@ -190,6 +270,7 @@ def edit_line(
         trailing = "\n"
     lines[line_number] = new_line + trailing
     write_atomic(path, "".join(lines), expected_mtime)
+    auto_commit(path, "line-edit")
 
 
 def edit_comment_block(
@@ -213,3 +294,4 @@ def edit_comment_block(
     new_lines = [ln + "\n" for ln in new_content.split("\n")]
     lines[block_start_line:block_end_line] = new_lines
     write_atomic(path, "".join(lines), expected_mtime)
+    auto_commit(path, "comment-block")

@@ -4,10 +4,11 @@ import html as html_lib
 import json
 from pathlib import Path
 
-from fastapi import APIRouter, Form
+from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse
 
 from app.config import settings
+from app.services import audit_log
 from app.services.file_writer import (
     FrontmatterCorruptError,
     MtimeConflictError,
@@ -90,6 +91,7 @@ def _render_item_fragment(
 
 @router.patch("/edit/review-response", response_class=HTMLResponse)
 def edit_review_response_route(
+    request: Request,
     file_path: str = Form(...),
     index: int = Form(...),
     response_text: str = Form(""),
@@ -98,8 +100,15 @@ def edit_review_response_route(
     note_text: str = Form(""),
     question_number: int = Form(0),
 ) -> HTMLResponse:
+    client_ip = request.client.host if request.client else None
+    ua = request.headers.get("user-agent")
+
     path = _resolve_allowed(file_path)
     if path is None:
+        audit_log.record(
+            "edit_review_response", file_path, status="fail",
+            reason="path-not-allowed", remote_addr=client_ip, ua=ua,
+        )
         return _toast_error("File not allowed.", draft=response_text)
 
     try:
@@ -107,14 +116,31 @@ def edit_review_response_route(
             path, index, response_text, mtime
         )
     except MtimeConflictError:
+        audit_log.record(
+            "edit_review_response", file_path, status="fail",
+            reason="mtime-conflict", remote_addr=client_ip, ua=ua,
+        )
         return _toast_error("File changed on disk — refresh.", draft=response_text)
     except FrontmatterCorruptError as exc:
+        audit_log.record(
+            "edit_review_response", file_path, status="fail",
+            reason=f"frontmatter-corrupt: {exc}", remote_addr=client_ip, ua=ua,
+        )
         return _toast_error(
             f"Can't save: note frontmatter is corrupt ({exc}). Fix the file manually.",
             draft=response_text,
         )
     except Exception as exc:
+        audit_log.record(
+            "edit_review_response", file_path, status="fail",
+            reason=f"error: {exc}", remote_addr=client_ip, ua=ua,
+        )
         return _toast_error(f"Write failed: {exc}", draft=response_text)
+
+    audit_log.record(
+        "edit_review_response", file_path, remote_addr=client_ip, ua=ua,
+        extra={"index": index, "marked_reviewed": result.marked_reviewed},
+    )
 
     fragment = _render_item_fragment(
         file_rel=file_path,
@@ -135,6 +161,7 @@ def edit_review_response_route(
 
 @router.post("/edit/review-response", response_class=HTMLResponse)
 def edit_review_response_post(
+    request: Request,
     file_path: str = Form(...),
     index: int = Form(...),
     response_text: str = Form(""),
@@ -144,6 +171,7 @@ def edit_review_response_post(
     question_number: int = Form(0),
 ) -> HTMLResponse:
     return edit_review_response_route(
+        request=request,
         file_path=file_path,
         index=index,
         response_text=response_text,

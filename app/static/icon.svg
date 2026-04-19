@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#13171f"/>
+  <g fill="none" stroke="#d9b35a" stroke-width="18" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="256" cy="256" r="140"/>
+    <path d="M256 116 L256 396"/>
+    <path d="M116 256 L396 256"/>
+  </g>
+  <text x="256" y="470" text-anchor="middle"
+        font-family="ui-sans-serif, system-ui, sans-serif"
+        font-size="56" font-weight="700" fill="#d9b35a">R</text>
+</svg>
