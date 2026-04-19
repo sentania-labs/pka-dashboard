@@ -7,7 +7,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # git is required at runtime: services/file_writer.py auto-commits every
 # successful mediated write to the PKA repo as an insurance snapshot.
 RUN apt-get update \
- && apt-get install -y --no-install-recommends git \
+ && apt-get install -y --no-install-recommends git curl \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
