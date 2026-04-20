@@ -5,6 +5,7 @@ import datetime as dt
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
+from app.config import settings
 from app.services import notes
 
 
@@ -12,7 +13,7 @@ router = APIRouter()
 
 
 def _today_context() -> dict:
-    today_date = dt.date.today()
+    today_date = dt.datetime.now(settings.tz).date()
     loaded = notes.load_briefing(today_date)
     if loaded is not None:
         meta, raw, html_body, filename, mtime, body_offset = loaded

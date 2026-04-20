@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 
 class ConfigError(RuntimeError):
@@ -12,6 +13,7 @@ class ConfigError(RuntimeError):
 @dataclass(frozen=True)
 class Settings:
     pka_root: Path
+    tz: ZoneInfo
     idle_lock_seconds: int = 900
 
     @property
@@ -54,7 +56,14 @@ def _load_settings() -> Settings:
         idle = 900
     if idle < 0:
         idle = 0
-    return Settings(pka_root=root, idle_lock_seconds=idle)
+
+    tz_name = os.environ.get("RENARIN_TZ", "America/Chicago")
+    try:
+        tz = ZoneInfo(tz_name)
+    except ZoneInfoNotFoundError as exc:
+        raise ConfigError(f"RENARIN_TZ is not a valid zoneinfo key: {tz_name}") from exc
+
+    return Settings(pka_root=root, tz=tz, idle_lock_seconds=idle)
 
 
 settings = _load_settings()
