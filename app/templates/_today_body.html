@@ -1,5 +1,10 @@
 <article class="briefing">
   {% if body_html %}
+    {% if fallback_banner %}
+      <div style="background:var(--pico-secondary-background,#f0f4f8);border-left:3px solid var(--pico-secondary,#6c757d);padding:0.5rem 1rem;margin-bottom:1rem;font-size:0.9em;">
+        Showing briefing from {{ fallback_date.isoformat() }} (most recent). No briefing yet for today, {{ today_date.isoformat() }}.
+      </div>
+    {% endif %}
     {% if frontmatter_meta %}
       <details class="meta-panel">
         <summary>Metadata</summary>
@@ -17,11 +22,6 @@
     {{ body_html | safe }}
   {% else %}
     <p>No briefing for {{ today_date.isoformat() }} yet.</p>
-    {% if last_briefing %}
-      <p>Last briefing:
-        <a href="/archive/{{ last_briefing.filename }}">{{ last_briefing.date.isoformat() }}</a>
-      </p>
-    {% endif %}
     <p><small>Expected at <code>scott/inbox/{{ today_date.isoformat() }}-daily-briefing.md</code>.</small></p>
   {% endif %}
 </article>

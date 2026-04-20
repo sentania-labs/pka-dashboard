@@ -28,17 +28,42 @@ def _today_context() -> dict:
             "last_briefing": None,
             "briefing_filename": filename,
             "briefing_mtime": mtime,
+            "fallback_banner": False,
+            "fallback_date": None,
         }
     recent = notes.find_most_recent_briefing()
-    last_briefing = None
     if recent is not None:
-        last_briefing = {"date": recent[0], "filename": recent[1]}
+        fallback_date, fallback_filename, source = recent
+        fallback_dir = (
+            settings.scott_inbox if source == "inbox" else settings.briefing_archive
+        )
+        fallback_loaded = notes.load_briefing_by_path(
+            fallback_dir / fallback_filename
+        )
+        if fallback_loaded is not None:
+            meta, raw, html_body, filename, mtime, body_offset = fallback_loaded
+            writing_prompt_html = notes.render_writing_prompt_card(
+                raw, filename, mtime, body_offset
+            )
+            return {
+                "today_date": today_date,
+                "body_html": html_body,
+                "writing_prompt_html": writing_prompt_html,
+                "frontmatter_meta": meta,
+                "last_briefing": None,
+                "briefing_filename": filename,
+                "briefing_mtime": mtime,
+                "fallback_banner": True,
+                "fallback_date": fallback_date,
+            }
     return {
         "today_date": today_date,
         "body_html": None,
         "writing_prompt_html": None,
         "frontmatter_meta": {},
-        "last_briefing": last_briefing,
+        "last_briefing": None,
+        "fallback_banner": False,
+        "fallback_date": None,
     }
 
 
