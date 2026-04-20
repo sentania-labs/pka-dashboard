@@ -438,12 +438,16 @@ def _title_from(meta: dict[str, Any], path: Path, body: str | None = None) -> st
     return path.stem
 
 
+def _now() -> dt.datetime:
+    return dt.datetime.now(settings.tz)
+
+
 def _mtime_date(path: Path) -> dt.date:
-    return dt.datetime.fromtimestamp(path.stat().st_mtime).date()
+    return dt.datetime.fromtimestamp(path.stat().st_mtime, settings.tz).date()
 
 
 def _age_hours_from_mtime(path: Path, now: dt.datetime | None = None) -> float:
-    now = now or dt.datetime.now()
+    now = now or _now()
     return (now.timestamp() - path.stat().st_mtime) / 3600.0
 
 
@@ -476,13 +480,15 @@ def load_briefing(date: dt.date) -> tuple[dict, str, str, str, float, int] | Non
 
 
 def find_most_recent_briefing() -> tuple[dt.date, str] | None:
-    """Scan scott/inbox/ for YYYY-MM-DD-daily-briefing.md. Return (date, filename)
-    of the newest one found, or None. Does not look in briefing-archive."""
-    inbox = settings.scott_inbox
-    if not inbox.is_dir():
+    """Scan briefing-archive/ for YYYY-MM-DD-daily-briefing.md. Return
+    (date, filename) of the newest one found, or None. The Today view
+    links to /archive/<filename>, so the source dir must match what
+    load_archive_item() will find."""
+    archive_dir = settings.briefing_archive
+    if not archive_dir.is_dir():
         return None
     candidates: list[tuple[dt.date, str]] = []
-    for entry in inbox.iterdir():
+    for entry in archive_dir.iterdir():
         if not entry.is_file():
             continue
         m = _BRIEFING_RE.match(entry.name)
@@ -511,7 +517,7 @@ def _needs_review_item(md_path: Path, now: dt.datetime) -> NoteItem | None:
 
     note_date = _coerce_date(meta.get("date"))
     if note_date is not None:
-        age = now - dt.datetime.combine(note_date, dt.time.min)
+        age = now - dt.datetime.combine(note_date, dt.time.min, tzinfo=settings.tz)
         age_hours = age.total_seconds() / 3600.0
     else:
         age_hours = _age_hours_from_mtime(md_path, now)
@@ -555,7 +561,7 @@ def load_needs_attention() -> list[NoteItem]:
     agents/shallan/inbox/ that have needs_review=true and reviewed != true.
     Sorted oldest-first."""
     items: list[NoteItem] = []
-    now = dt.datetime.now()
+    now = _now()
 
     kb = settings.kb
     if kb.is_dir():
@@ -589,7 +595,7 @@ def load_drafts() -> list[DraftItem]:
     if not drafts_dir.is_dir():
         return items
 
-    now = dt.datetime.now()
+    now = _now()
     for md_path in sorted(drafts_dir.glob("*.md")):
         try:
             post = _load_post(md_path)
