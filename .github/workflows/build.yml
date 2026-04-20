@@ -12,6 +12,11 @@ jobs:
     runs-on: [self-hosted, linux, docker]
     steps:
       - uses: actions/checkout@v4
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_API_KEY }}
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
