@@ -480,13 +480,15 @@ def load_briefing(date: dt.date) -> tuple[dict, str, str, str, float, int] | Non
 
 
 def find_most_recent_briefing() -> tuple[dt.date, str] | None:
-    """Scan scott/inbox/ for YYYY-MM-DD-daily-briefing.md. Return (date, filename)
-    of the newest one found, or None. Does not look in briefing-archive."""
-    inbox = settings.scott_inbox
-    if not inbox.is_dir():
+    """Scan briefing-archive/ for YYYY-MM-DD-daily-briefing.md. Return
+    (date, filename) of the newest one found, or None. The Today view
+    links to /archive/<filename>, so the source dir must match what
+    load_archive_item() will find."""
+    archive_dir = settings.briefing_archive
+    if not archive_dir.is_dir():
         return None
     candidates: list[tuple[dt.date, str]] = []
-    for entry in inbox.iterdir():
+    for entry in archive_dir.iterdir():
         if not entry.is_file():
             continue
         m = _BRIEFING_RE.match(entry.name)
