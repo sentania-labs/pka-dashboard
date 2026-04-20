@@ -1,6 +1,6 @@
 # Renarin — PKA Dashboard
 
-A LAN-only, read-only web dashboard over Scott's Personal Knowledge Assistant filesystem. FastAPI + Jinja2 + htmx + Pico CSS. No database, no auth, no writes.
+A LAN-only, single-user web dashboard over Scott's Personal Knowledge Assistant filesystem. FastAPI + Jinja2 + htmx + Pico CSS. No database, no auth, no search. Primarily read-oriented with a small set of mediated writes (toggle `reviewed`, edit briefing todos/comments, save per-item review responses) — all writes flow through `services/file_writer.py`.
 
 Four views:
 
@@ -8,6 +8,8 @@ Four views:
 - **Needs Attention** — unreviewed notes under `kb/` grouped by age bucket
 - **Drafts** — pending items in `scott/inbox/content-drafts/`
 - **Archive** — browse `scott/inbox/briefing-archive/`
+
+Installs as a PWA on mobile — service worker caches GETs, writes are never cached or replayed.
 
 ## Local development
 
@@ -20,6 +22,13 @@ PKA_ROOT=/path/to/pka uvicorn app.main:app --reload --port 8000
 ```
 
 `PKA_ROOT` is required. No default — the app fails at import if it is unset.
+
+Optional env vars:
+
+| Var | Default | Purpose |
+|---|---|---|
+| `RENARIN_TZ` | `America/Chicago` | zoneinfo key used for "today" date math |
+| `RENARIN_IDLE_LOCK_SECONDS` | `900` | Frontend idle-lock overlay (screen-privacy shim, NOT auth). `0` disables. |
 
 ## Docker
 
@@ -55,7 +64,10 @@ TLS certs (`/certs/tls.key`, `/certs/tls.crt`) are bind-mounted in production by
 | `/drafts` | Pending content drafts |
 | `/archive` | Archive index |
 | `/archive/{filename}` | Render a single archived briefing |
+| `/partials/today-body` | htmx partial refresh of the Today body |
 | `/healthz` | `{"status":"ok"}` |
+
+Mediated-write routes (CSRF-guarded, called by htmx from the views above): `POST /edit/reviewed`, `POST /edit/reviewed-undo`, `PATCH /edit/todo`, `PATCH /edit/comments`, `PATCH|POST /edit/review-response`. Every successful write triggers an auto-commit in the PKA repo (insurance snapshot) and a JSONL audit-log entry at `scott/inbox/_renarin-audit-log.jsonl`.
 
 ## Hard rules
 
