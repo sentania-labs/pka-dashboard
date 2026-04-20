@@ -459,49 +459,57 @@ def _compute_body_offset(full_text: str, body_text: str) -> int:
     return full_text[:idx].count("\n")
 
 
-def load_briefing(date: dt.date) -> tuple[dict, str, str, str, float, int] | None:
-    """Load a daily briefing by date.
+def load_briefing_by_path(
+    path: Path,
+) -> tuple[dict, str, str, str, float, int] | None:
+    """Load a briefing by absolute path.
 
     Returns (metadata, raw_body, rendered_html, filename, mtime, body_offset)
-    or None. Rendered HTML line indices are full-file (frontmatter + body)
-    to match the write path; body_offset is exposed so other consumers
-    (e.g. the writing prompt card) can apply the same shift.
+    or None. The filename in the return tuple is the bare filename (not full
+    path) so downstream edit routes resolve it against settings.scott_inbox.
     """
-    filename = f"{date.isoformat()}-daily-briefing.md"
-    path = settings.scott_inbox / filename
     if not path.is_file():
         return None
     post = _load_post(path)
     mtime = path.stat().st_mtime
     full_text = path.read_text(encoding="utf-8")
     body_offset = _compute_body_offset(full_text, post.content)
+    filename = path.name
     html = render_briefing(post.content, filename, mtime, body_offset)
     return dict(post.metadata), post.content, html, filename, mtime, body_offset
 
 
-def find_most_recent_briefing() -> tuple[dt.date, str] | None:
-    """Scan briefing-archive/ for YYYY-MM-DD-daily-briefing.md. Return
-    (date, filename) of the newest one found, or None. The Today view
-    links to /archive/<filename>, so the source dir must match what
-    load_archive_item() will find."""
-    archive_dir = settings.briefing_archive
-    if not archive_dir.is_dir():
-        return None
-    candidates: list[tuple[dt.date, str]] = []
-    for entry in archive_dir.iterdir():
-        if not entry.is_file():
+def load_briefing(date: dt.date) -> tuple[dict, str, str, str, float, int] | None:
+    """Load today's-style briefing (from scott/inbox/) by date."""
+    filename = f"{date.isoformat()}-daily-briefing.md"
+    return load_briefing_by_path(settings.scott_inbox / filename)
+
+
+def find_most_recent_briefing() -> tuple[dt.date, str, str] | None:
+    """Scan scott/inbox/ and scott/inbox/briefing-archive/ for daily briefing
+    files. Return (date, filename, source_dir) of the newest one, or None.
+    source_dir is 'inbox' (scott/inbox/) or 'archive' (briefing-archive/)."""
+    candidates: list[tuple[dt.date, str, str]] = []
+    for source, directory in (
+        ("inbox", settings.scott_inbox),
+        ("archive", settings.briefing_archive),
+    ):
+        if not directory.is_dir():
             continue
-        m = _BRIEFING_RE.match(entry.name)
-        if not m:
-            continue
-        try:
-            d = dt.date.fromisoformat(m.group(1))
-        except ValueError:
-            continue
-        candidates.append((d, entry.name))
+        for entry in directory.iterdir():
+            if not entry.is_file():
+                continue
+            m = _BRIEFING_RE.match(entry.name)
+            if not m:
+                continue
+            try:
+                d = dt.date.fromisoformat(m.group(1))
+            except ValueError:
+                continue
+            candidates.append((d, entry.name, source))
     if not candidates:
         return None
-    candidates.sort(reverse=True)
+    candidates.sort(key=lambda c: c[0], reverse=True)
     return candidates[0]
 
 
