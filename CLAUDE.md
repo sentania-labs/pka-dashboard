@@ -36,6 +36,7 @@ Canonical scope document: `../../agents/riker/status/pka-dashboard.md` (relative
 | Markdown rendering | mistune |
 | Frontmatter parsing (read) | python-frontmatter |
 | Frontmatter round-trip (write) | ruamel.yaml (preserves key order, quotes, block style) |
+| Form parsing | python-multipart (FastAPI form bodies on edit routes) |
 | Container | Single Docker container, no compose services |
 | TLS | uvicorn `--ssl-keyfile` / `--ssl-certfile` (certs from your internal CA) |
 | Port | 8443 (production) / 8000 (dev, HTTP) |
@@ -74,30 +75,36 @@ pka-dashboard/
 │   └── updates/
 │       └── archive/
 └── app/
-    ├── main.py              ← FastAPI app + route registration
-    ├── config.py            ← PKA_ROOT and other env-driven settings
+    ├── main.py              ← FastAPI app + CSRF middleware + route registration
+    ├── config.py            ← PKA_ROOT, RENARIN_TZ, RENARIN_IDLE_LOCK_SECONDS
     ├── routes/
-    │   ├── today.py         ← GET /
+    │   ├── today.py         ← GET /, GET /partials/today-body
     │   ├── needs_attention.py  ← GET /needs-attention
     │   ├── drafts.py        ← GET /drafts
-    │   ├── archive.py       ← GET /archive
+    │   ├── archive.py       ← GET /archive, GET /archive/{filename}
     │   ├── edit_todo.py     ← PATCH /edit/todo (briefing todo brackets)
     │   ├── edit_comments.py ← PATCH /edit/comments (Scott's-comment blocks)
-    │   ├── edit_review.py   ← POST /edit/reviewed (toggle reviewed=true)
-    │   └── edit_review_response.py  ← PATCH /edit/review-response (per-item responses)
+    │   ├── edit_review.py   ← POST /edit/reviewed, POST /edit/reviewed-undo
+    │   └── edit_review_response.py  ← PATCH|POST /edit/review-response (per-item responses)
     ├── services/
     │   ├── notes.py         ← Frontmatter parsing, note loading, typed objects
-    │   └── file_writer.py   ← Mediated write layer (ruamel.yaml round-trip, atomic + mtime-guarded)
+    │   ├── file_writer.py   ← Mediated write layer (ruamel.yaml round-trip, atomic + mtime-guarded, auto-commits to PKA repo after each write)
+    │   ├── csrf.py          ← Synchronizer-token CSRF (cookie + X-CSRF-Token header)
+    │   └── audit_log.py     ← JSONL append-only audit at scott/inbox/_renarin-audit-log.jsonl
     ├── templates/
-    │   ├── base.html        ← Nav, page shell
+    │   ├── base.html        ← Nav, page shell, PWA meta + idle-lock overlay
     │   ├── today.html
+    │   ├── _today_body.html ← htmx partial for Today body refresh
     │   ├── needs_attention.html
     │   ├── drafts.html
     │   └── archive.html
     └── static/
         ├── htmx.min.js
-        ├── todo.js          ← Inline editors for todos + comment blocks + toast wiring
-        └── style.css
+        ├── todo.js          ← Inline editors for todos + comment blocks, CSRF header wiring, toast wiring
+        ├── style.css
+        ├── manifest.json    ← PWA manifest
+        ├── sw.js            ← Service worker (caches GETs only; writes never cached/replayed)
+        └── icon.svg         ← PWA app icon
 ```
 
 ## Deploy Target
@@ -116,7 +123,6 @@ pka-dashboard/
 - Search (that's Jasnah's domain)
 - Creating new notes from scratch, or file moves/renames
 - Schema-wide frontmatter rewrites beyond the targeted edits listed above
-- GitHub remote, CI/CD, GitHub Actions
 
 ## New frontmatter fields (Renarin-introduced)
 
