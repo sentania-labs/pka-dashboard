@@ -5,6 +5,15 @@
         Showing briefing from {{ fallback_date.isoformat() }} (most recent). No briefing yet for today, {{ today_date.isoformat() }}.
       </div>
     {% endif %}
+    {% if briefing_is_archive %}
+      <div style="background:var(--pico-secondary-background,#f0f4f8);border-left:3px solid var(--pico-color-amber-500,#f59e0b);padding:0.5rem 1rem;margin-bottom:1rem;font-size:0.9em;">
+        Archived briefing — read-only. Edits are disabled.
+      </div>
+      <style>
+        .todo-edit-btn { display: none !important; }
+        .comment-block { cursor: default !important; pointer-events: none !important; }
+      </style>
+    {% endif %}
     {% if frontmatter_meta %}
       <details class="meta-panel">
         <summary>Metadata</summary>
