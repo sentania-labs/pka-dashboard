@@ -1,14 +1,18 @@
 // Renarin service worker.
 // Precaches the four main views + static assets on install.
-// GETs: cache first, network fallback.
+// Navigation routes: network first, cache fallback (state may change out-of-band).
+// Static assets: cache first, network fallback (immutable between deploys).
 // Mutating methods (PATCH/POST/PUT/DELETE): network only — never cache, never replay.
 
-const CACHE_NAME = 'renarin-v1';
-const PRECACHE_URLS = [
+const CACHE_NAME = 'renarin-v2';
+const NAV_ROUTES = [
   '/',
   '/needs-attention',
   '/drafts',
   '/archive',
+];
+const PRECACHE_URLS = [
+  ...NAV_ROUTES,
   '/static/style.css',
   '/static/htmx.min.js',
   '/static/todo.js',
@@ -63,11 +67,28 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Navigation routes: network first so out-of-band state changes show up without a hard refresh.
+  // Cache is a graceful fallback for offline / network failure.
+  if (NAV_ROUTES.includes(url.pathname)) {
+    event.respondWith(
+      fetch(req)
+        .then((resp) => {
+          if (resp && resp.ok) {
+            const copy = resp.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(req, copy)).catch(() => {});
+          }
+          return resp;
+        })
+        .catch(() => caches.match(req))
+    );
+    return;
+  }
+
+  // Static assets: cache first, network fallback. Opportunistically refresh cache on hit.
   event.respondWith(
     caches.match(req).then((cached) => {
       const networked = fetch(req)
         .then((resp) => {
-          // Opportunistically refresh cache for precached paths.
           if (resp && resp.ok && PRECACHE_URLS.includes(url.pathname)) {
             const copy = resp.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(req, copy)).catch(() => {});
