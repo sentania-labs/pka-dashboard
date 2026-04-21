@@ -4,7 +4,7 @@
 // Static assets: cache first, network fallback (immutable between deploys).
 // Mutating methods (PATCH/POST/PUT/DELETE): network only — never cache, never replay.
 
-const CACHE_NAME = 'renarin-v2';
+const CACHE_NAME = 'renarin-v3';
 const NAV_ROUTES = [
   '/',
   '/needs-attention',
@@ -68,18 +68,27 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Navigation routes: network first so out-of-band state changes show up without a hard refresh.
-  // Cache is a graceful fallback for offline / network failure.
+  // Cache is a graceful fallback for offline / network failure. A 4s timeout prevents slow
+  // networks from hanging the fetch past the point where the cache would be useful.
   if (NAV_ROUTES.includes(url.pathname)) {
     event.respondWith(
-      fetch(req)
-        .then((resp) => {
-          if (resp && resp.ok) {
-            const copy = resp.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(req, copy)).catch(() => {});
-          }
-          return resp;
-        })
-        .catch(() => caches.match(req))
+      (function () {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 4000);
+        return fetch(req, { signal: controller.signal })
+          .then((resp) => {
+            clearTimeout(timer);
+            if (resp && resp.ok) {
+              const copy = resp.clone();
+              caches.open(CACHE_NAME).then((cache) => cache.put(req, copy)).catch(() => {});
+            }
+            return resp;
+          })
+          .catch(() => {
+            clearTimeout(timer);
+            return caches.match(req);
+          });
+      })()
     );
     return;
   }
