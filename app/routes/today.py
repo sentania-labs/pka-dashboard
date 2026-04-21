@@ -30,6 +30,7 @@ def _today_context() -> dict:
             "briefing_mtime": mtime,
             "fallback_banner": False,
             "fallback_date": None,
+            "briefing_is_archive": False,
         }
     recent = notes.find_most_recent_briefing()
     if recent is not None:
@@ -55,6 +56,7 @@ def _today_context() -> dict:
                 "briefing_mtime": mtime,
                 "fallback_banner": True,
                 "fallback_date": fallback_date,
+                "briefing_is_archive": source == "archive",
             }
     return {
         "today_date": today_date,
@@ -64,6 +66,7 @@ def _today_context() -> dict:
         "last_briefing": None,
         "fallback_banner": False,
         "fallback_date": None,
+        "briefing_is_archive": False,
     }
 
 
