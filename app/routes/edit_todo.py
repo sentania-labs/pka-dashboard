@@ -100,9 +100,8 @@ def edit_todo(
     filename = path.name
     new_mtime = path.stat().st_mtime
     suffix_md = parsed["suffix"][1:] if parsed["suffix"].startswith("]") else parsed["suffix"]
-    import mistune
 
-    rest_html = mistune.html(suffix_md.strip()) or ""
+    rest_html = notes.render_markdown(suffix_md.strip()) or ""
     rest_html = rest_html.strip()
     if rest_html.startswith("<p>") and rest_html.endswith("</p>"):
         rest_html = rest_html[3:-4]

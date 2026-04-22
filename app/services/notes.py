@@ -132,7 +132,7 @@ def render_writing_prompt_card(
 
     lines = raw_md.splitlines()
     block_lines = lines[wp["response_block_start"]:wp["response_block_end"]]
-    rendered_bq = mistune.html("\n".join(block_lines))
+    rendered_bq = _markdown("\n".join(block_lines))
 
     prompt_html = _markdown(wp["prompt_text"])
 
@@ -240,6 +240,12 @@ def _render(md_text: str) -> str:
     return _markdown(md_text)
 
 
+def render_markdown(md_text: str) -> str:
+    """Public markdown→HTML helper. Uses the task-list-enabled renderer so
+    `- [ ]` / `- [x]` items produce disabled checkboxes."""
+    return _markdown(md_text)
+
+
 def _build_todo_html(
     *,
     line_num: int,
@@ -303,7 +309,11 @@ def _build_todo_html(
     )
 
 
-_LI_BRACKET_RE = re.compile(r"<li>\[([^\]]*)\]([\s\S]*?)</li>")
+_LI_BRACKET_RE = re.compile(
+    r"<li><p>\[([^\]]*)\]([\s\S]*?)</p>\s*</li>"
+    r"|"
+    r"<li>\[([^\]]*)\]([\s\S]*?)</li>"
+)
 _COMMENT_ANCHOR_RE = re.compile(
     r"<!--COMMENT_BLOCK start=(\d+) end=(\d+)-->\s*(<blockquote>[\s\S]*?</blockquote>)"
 )
@@ -355,7 +365,8 @@ def render_briefing(
             return match.group(0)
         todo = todos[idx[0]]
         idx[0] += 1
-        rest_html = match.group(2)
+        # Alternation: loose list (group 1/2) or tight list (group 3/4).
+        rest_html = match.group(2) if match.group(1) is not None else match.group(4)
         return _build_todo_html(
             line_num=todo["line"] + body_offset,
             content=todo["content"],
