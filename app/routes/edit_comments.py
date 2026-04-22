@@ -118,8 +118,7 @@ def edit_comments(
     ]
     raw_content = "\n".join(content_lines)
 
-    import mistune
-    rendered_bq = mistune.html("\n".join(block_lines))
+    rendered_bq = notes.render_markdown("\n".join(block_lines))
 
     is_placeholder = (
         notes._PLACEHOLDER_MARKER in raw_content

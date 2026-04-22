@@ -198,6 +198,17 @@ details.meta-panel dd {
   margin-bottom: 0;
 }
 
+/* GFM task-list items (mistune's task_lists plugin).
+   Drops the bullet so the checkbox stands alone, GitHub-style. */
+li.task-list-item {
+  list-style-type: none;
+  margin-left: -1.2em;
+}
+.task-list-item-checkbox {
+  margin-right: 0.4em;
+  vertical-align: middle;
+}
+
 /* Writing Prompt card (hoisted to top of Today view) */
 .writing-prompt-card {
   border: 1px solid var(--pico-muted-border-color);

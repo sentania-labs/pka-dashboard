@@ -4,7 +4,7 @@
 // Static assets: cache first, network fallback (immutable between deploys).
 // Mutating methods (PATCH/POST/PUT/DELETE): network only — never cache, never replay.
 
-const CACHE_NAME = 'renarin-v3';
+const CACHE_NAME = 'renarin-v4';
 const NAV_ROUTES = [
   '/',
   '/needs-attention',
