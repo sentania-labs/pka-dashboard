@@ -17,6 +17,14 @@ COPY app ./app
 
 RUN pip install --no-cache-dir .
 
+# Run as UID 1004 to match scott's host UID, so files written to the
+# bind-mounted PKA volume are owned by scott and hand-editable on the host.
+# /certs/ and /data/pka/ are mounted at runtime; the host is responsible
+# for ensuring UID 1004 can read/write them (certs readable, PKA RW).
+RUN useradd -r -u 1004 -s /sbin/nologin appuser \
+ && chown -R appuser /app
+USER 1004
+
 EXPOSE 8443
 
 # Production: HTTPS on 8443 with certs bind-mounted at /certs/ by Navani.
