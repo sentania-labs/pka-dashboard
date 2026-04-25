@@ -84,6 +84,29 @@
   document.body.addEventListener('reviewsaved', handleMtimeBroadcast);
   document.body.addEventListener('commentssaved', handleMtimeBroadcast);
 
+  // htmx auto-fires events from HX-Trigger response headers, but direct
+  // fetch() doesn't. Replay them manually so sibling blocks on the same
+  // file (e.g. a second comment block whose editor was opened after the
+  // first save) get their data-mtime refreshed via handleMtimeBroadcast.
+  function dispatchHxTriggers(headers) {
+    if (!headers) return;
+    var raw = headers.get && headers.get('HX-Trigger');
+    if (!raw) return;
+    var parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (e) {
+      parsed = null;
+    }
+    if (parsed && typeof parsed === 'object') {
+      Object.keys(parsed).forEach(function (name) {
+        document.body.dispatchEvent(new CustomEvent(name, { detail: parsed[name], bubbles: true }));
+      });
+    } else {
+      document.body.dispatchEvent(new CustomEvent(raw, { bubbles: true }));
+    }
+  }
+
   function initSaveIndicators() {
     document.querySelectorAll('.review-response-textarea').forEach(function (ta) {
       if (ta.dataset.indicatorInited) return;
@@ -344,13 +367,17 @@
       form.append('block_start', block.dataset.start);
       form.append('block_end', block.dataset.end);
       form.append('new_content', ta.value);
+      // Read mtime at click time so a save that follows another save on the
+      // same file picks up the broadcasted post-save mtime.
       form.append('mtime', block.dataset.mtime);
       if (block.dataset.marker) {
         form.append('marker', block.dataset.marker);
       }
       fetch('/edit/comments', { method: 'PATCH', body: form })
         .then(function (r) {
-          return r.text().then(function (body) { return { ok: r.ok, status: r.status, body: body }; });
+          return r.text().then(function (body) {
+            return { ok: r.ok, status: r.status, body: body, headers: r.headers };
+          });
         })
         .then(function (res) {
           if (res.ok) {
@@ -361,7 +388,9 @@
               block.replaceWith(newEl);
               if (window.htmx) window.htmx.process(newEl);
             }
-            window.flashToast('Saved');
+            // dispatchHxTriggers fires `commentssaved`, which the toast
+            // listener in base.html turns into the "Saved" toast.
+            dispatchHxTriggers(res.headers);
           } else {
             var tmp = document.createElement('template');
             tmp.innerHTML = res.body.trim();
