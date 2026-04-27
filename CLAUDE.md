@@ -128,6 +128,14 @@ pka-dashboard/
 
 - `review_responses: list[str]` — per-item responses to the `review_notes` questions raised by Shallan. Written by Renarin's Needs Attention editor. Index-aligned: `review_responses[N]` is the response to `review_notes[N]`. Missing trailing entries are treated as empty; writes extend the list with empty strings as needed. Shallan's agent def does not yet know about this field (as of 2026-04-17) — update separately before she next processes notes Scott has annotated.
 
+## Charter
+
+This workspace is software. The "What this is" / product
+scope above is the charter. Software authors don't touch
+infrastructure outside their charter — even with credentials
+available. For work that needs out-of-charter access, use a
+sanctioned cross-system channel.
+
 ## Development
 
 ```bash
