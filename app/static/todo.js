@@ -83,6 +83,7 @@
   document.body.addEventListener('allreviewed', handleMtimeBroadcast);
   document.body.addEventListener('reviewsaved', handleMtimeBroadcast);
   document.body.addEventListener('commentssaved', handleMtimeBroadcast);
+  document.body.addEventListener('todosaved', handleMtimeBroadcast);
 
   // htmx auto-fires events from HX-Trigger response headers, but direct
   // fetch() doesn't. Replay them manually so sibling blocks on the same

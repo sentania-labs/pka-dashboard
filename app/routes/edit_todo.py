@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from fastapi import APIRouter, Form, Request
@@ -118,5 +119,7 @@ def edit_todo(
     )
 
     response = HTMLResponse(fragment)
-    response.headers["HX-Trigger"] = "todosaved"
+    response.headers["HX-Trigger"] = json.dumps(
+        {"todosaved": {"file": filename, "mtime": new_mtime}}
+    )
     return response
